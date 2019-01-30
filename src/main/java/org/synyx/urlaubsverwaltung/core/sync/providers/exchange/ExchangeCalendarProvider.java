@@ -22,7 +22,9 @@ import org.apache.log4j.Logger;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import microsoft.exchange.webservices.data.property.complex.time.OlsonTimeZoneDefinition;
 import org.springframework.stereotype.Service;
 
 import org.synyx.urlaubsverwaltung.core.mail.MailService;
@@ -34,7 +36,7 @@ import org.synyx.urlaubsverwaltung.core.sync.CalendarNotCreatedException;
 import org.synyx.urlaubsverwaltung.core.sync.providers.CalendarProvider;
 
 import java.util.Optional;
-
+import java.util.TimeZone;
 
 /**
  * Provides sync of absences with exchange server calendar.
@@ -52,6 +54,9 @@ public class ExchangeCalendarProvider implements CalendarProvider {
 
     private String credentialsMailAddress;
     private String credentialsPassword;
+
+    @Value(value = "${uv.ews.timezone}")
+    private String timezone;
 
     @Autowired
     public ExchangeCalendarProvider(MailService mailService) {
@@ -201,10 +206,17 @@ public class ExchangeCalendarProvider implements CalendarProvider {
 
         Person person = absence.getPerson();
 
+        LOG.info(String.format("Appointment with EWS timezone '%s'.", this.timezone));
+        OlsonTimeZoneDefinition tzd = new OlsonTimeZoneDefinition(TimeZone.getTimeZone(this.timezone));
+
         appointment.setSubject(absence.getEventSubject());
 
+        appointment.setStartTimeZone(tzd);
         appointment.setStart(absence.getStartDate());
+
+        appointment.setEndTimeZone(tzd);
         appointment.setEnd(absence.getEndDate());
+
         appointment.setIsAllDayEvent(absence.isAllDay());
         appointment.getRequiredAttendees().add(person.getEmail());
     }
